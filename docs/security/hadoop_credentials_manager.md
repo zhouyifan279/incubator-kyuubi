@@ -66,6 +66,13 @@ This version of configuration has lower priority than those in `$KYUUBI_HOME/con
 Hive configurations specified in JDBC connection URL are ignored by Hadoop Credentials Manager as
 Hadoop Credentials Manager is initialized when Kyuubi server starts.
 
+##### 
+Extra Hive metastore servers can be specified in `$KYUUBI_HOME/conf/kyuubi-defaults.conf`
+by `kyuubi.credentials.hive.metastore.uris`.
+URIs should be specified in format "thrift://host01:port01,thrift://host02:port02;thrift://host11:port11,thrift://host12:port12",
+where "," separates URIs belonging to same metastore cluster. ";" separates URIs of different
+metastore clusters.
+
 ### Credentials Renewal
 
 Key | Default | Meaning | Type | Since

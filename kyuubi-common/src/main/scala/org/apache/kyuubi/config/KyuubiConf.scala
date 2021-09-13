@@ -272,6 +272,19 @@ object KyuubiConf {
       .booleanConf
       .createWithDefault(true)
 
+  val CREDENTIALS_HIVE_METASTORE_URIS: ConfigEntry[Seq[String]] =
+    buildConf("credentials.hive.metastore.uris")
+      .doc("Extra Hive metastore URIs for which to request delegation tokens. " +
+        "URIs should be specified in format \"thrift://host01:port01,thrift://host02:port02;" +
+        "thrift://host11:port11,thrift://host12:port12\", where " +
+        "\",\" separates URIs belonging to same metastore cluster, " +
+        "\";\" separates URIs of different metastore clusters." +
+        "URIs in hive-site.xml does not need to be listed here.")
+      .version("1.4.0")
+      .stringConf
+      .toSequence(";")
+      .createWithDefault(Nil)
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   //                              Frontend Service Configuration                                 //
   /////////////////////////////////////////////////////////////////////////////////////////////////

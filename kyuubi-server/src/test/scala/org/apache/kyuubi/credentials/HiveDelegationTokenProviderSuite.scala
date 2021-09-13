@@ -18,7 +18,7 @@
 package org.apache.kyuubi.credentials
 
 import java.io.{File, FileOutputStream}
-import java.net.URLClassLoader
+import java.net.{URI, URLClassLoader}
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 
@@ -47,6 +47,7 @@ class HiveDelegationTokenProviderSuite extends KerberizedTestHelper {
 
   private val hadoopConfDir: File = Utils.createTempDir().toFile
   private var hiveConf: HiveConf = _
+  private var extraMetaStoreUri: String = _
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -77,13 +78,22 @@ class HiveDelegationTokenProviderSuite extends KerberizedTestHelper {
           Array(hadoopConfDir.toURI.toURL),
           classOf[Configuration].getClassLoader)
 
-      hiveConf = LocalMetaServer.defaultHiveConf()
+      hiveConf = LocalMetaServer.defaultHiveConf(20201)
       hiveConf.addResource(conf)
       hiveConf.setVar(METASTORE_USE_THRIFT_SASL, "true")
       hiveConf.setVar(METASTORE_KERBEROS_PRINCIPAL, testPrincipal)
       hiveConf.setVar(METASTORE_KERBEROS_KEYTAB_FILE, testKeytab)
       val metaServer = new LocalMetaServer(hiveConf, classloader)
       metaServer.start()
+
+      val extraHiveConf = LocalMetaServer.defaultHiveConf(20202)
+      extraHiveConf.addResource(conf)
+      extraHiveConf.setVar(METASTORE_USE_THRIFT_SASL, "true")
+      extraHiveConf.setVar(METASTORE_KERBEROS_PRINCIPAL, testPrincipal)
+      extraHiveConf.setVar(METASTORE_KERBEROS_KEYTAB_FILE, testKeytab)
+      val extraMetaServer = new LocalMetaServer(extraHiveConf, classloader)
+      extraMetaServer.start()
+      extraMetaStoreUri = extraHiveConf.getVar(METASTOREURIS)
     }
   }
 
@@ -96,6 +106,7 @@ class HiveDelegationTokenProviderSuite extends KerberizedTestHelper {
       UserGroupInformation.loginUserFromKeytab(testPrincipal, testKeytab)
 
       val kyuubiConf = new KyuubiConf(false)
+        .set(KyuubiConf.CREDENTIALS_HIVE_METASTORE_URIS, Seq(extraMetaStoreUri))
       val provider = new HiveDelegationTokenProvider
       provider.initialize(hiveConf, kyuubiConf)
       assert(provider.delegationTokensRequired())
@@ -104,25 +115,26 @@ class HiveDelegationTokenProviderSuite extends KerberizedTestHelper {
       val credentials = new Credentials
       provider.obtainDelegationTokens(owner, credentials)
 
-      val token = credentials.getAllTokens.asScala
+      val tokens = credentials.getAllTokens.asScala
         .filter(_.getKind == DelegationTokenIdentifier.HIVE_DELEGATION_KIND)
-        .head
-      assert(token != null)
+        .toSeq
+      assert(tokens.size == 2)
 
-      val tokenIdent = token.decodeIdentifier().asInstanceOf[DelegationTokenIdentifier]
-      assertResult(DelegationTokenIdentifier.HIVE_DELEGATION_KIND)(token.getKind)
-      assertResult(new Text(owner))(tokenIdent.getOwner)
-      val currentUserName = UserGroupInformation.getCurrentUser.getUserName
-      assertResult(new Text(currentUserName))(tokenIdent.getRealUser)
+      tokens.foreach { token =>
+        val tokenIdent = token.decodeIdentifier().asInstanceOf[DelegationTokenIdentifier]
+        assertResult(DelegationTokenIdentifier.HIVE_DELEGATION_KIND)(token.getKind)
+        assertResult(new Text(owner))(tokenIdent.getOwner)
+        val currentUserName = UserGroupInformation.getCurrentUser.getUserName
+        assertResult(new Text(currentUserName))(tokenIdent.getRealUser)
+      }
     }
   }
 }
 
 class LocalMetaServer(
-    hiveConf: HiveConf = defaultHiveConf(),
+    hiveConf: HiveConf = defaultHiveConf(20201),
     serverContextClassLoader: ClassLoader)
     extends Logging {
-  import LocalMetaServer._
 
   def start(): Unit = {
     val startLock = new ReentrantLock
@@ -132,8 +144,9 @@ class LocalMetaServer(
 
     Future {
       try {
+        val uri = new URI(HiveConf.getTrimmedStringsVar(hiveConf, METASTOREURIS)(0))
         HiveMetaStore.startMetaStore(
-          port,
+          uri.getPort,
           new HadoopThriftAuthBridgeWithServerContextClassLoader(
             serverContextClassLoader),
           hiveConf,
@@ -161,9 +174,7 @@ class LocalMetaServer(
 
 object LocalMetaServer {
 
-  private val port = 20101
-
-  def defaultHiveConf(): HiveConf = {
+  def defaultHiveConf(port: Int): HiveConf = {
     val hiveConf = new HiveConf()
     hiveConf.setVar(METASTOREURIS, "thrift://localhost:" + port)
     hiveConf.setVar(METASTORE_SCHEMA_VERIFICATION, "false")

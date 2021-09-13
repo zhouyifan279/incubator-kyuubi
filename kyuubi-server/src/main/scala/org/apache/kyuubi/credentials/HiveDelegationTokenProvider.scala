@@ -19,6 +19,7 @@ package org.apache.kyuubi.credentials
 
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.conf.HiveConf
+import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.hive.metastore.{IMetaStoreClient, RetryingMetaStoreClient}
 import org.apache.hadoop.hive.thrift.DelegationTokenIdentifier
 import org.apache.hadoop.io.Text
@@ -31,42 +32,46 @@ import org.apache.kyuubi.config.KyuubiConf
 
 class HiveDelegationTokenProvider extends HadoopDelegationTokenProvider with Logging {
 
-  private var client: Option[IMetaStoreClient] = None
+  private var clients: Map[Text, IMetaStoreClient] = Map.empty
   private var principal: String = _
 
   override def serviceName: String = "hive"
 
   override def initialize(hadoopConf: Configuration, kyuubiConf: KyuubiConf): Unit = {
-    val conf = new HiveConf(hadoopConf, classOf[HiveConf])
-    val metastoreUris = conf.getTrimmed("hive.metastore.uris", "")
+    val hiveConf = new HiveConf(hadoopConf, classOf[HiveConf])
+    val urisSeq = (HiveConf.getTrimmedVar(hiveConf, ConfVars.METASTOREURIS) +:
+      kyuubiConf.get(KyuubiConf.CREDENTIALS_HIVE_METASTORE_URIS))
+      .filter(_.nonEmpty)
 
     if (SecurityUtil.getAuthenticationMethod(hadoopConf) != AuthenticationMethod.SIMPLE
-      && metastoreUris.nonEmpty
-      && conf.getBoolean("hive.metastore.sasl.enabled", false)) {
+      && urisSeq.nonEmpty
+      && hiveConf.getBoolVar(ConfVars.METASTORE_USE_THRIFT_SASL)) {
 
-      val principalKey = "hive.metastore.kerberos.principal"
-      principal = conf.getTrimmed(principalKey, "")
+      val principalKey = ConfVars.METASTORE_KERBEROS_PRINCIPAL.varname
+      principal = hiveConf.getTrimmed(principalKey, "")
       require(principal.nonEmpty, s"Hive principal $principalKey undefined")
 
-      client = Some(RetryingMetaStoreClient.getProxy(conf, false))
-      info(s"Created HiveMetaStoreClient with metastore uris $metastoreUris")
+      clients = urisSeq.map { uris =>
+        info(s"Creating HiveMetaStoreClient with metastore uris $uris")
+        val conf = new HiveConf(hiveConf)
+        conf.setVar(ConfVars.METASTOREURIS, uris)
+        (new Text(uris), RetryingMetaStoreClient.getProxy(conf, false))
+      }.toMap
     }
   }
 
-  override def delegationTokensRequired(): Boolean = client.nonEmpty
+  override def delegationTokensRequired(): Boolean = clients.nonEmpty
 
   override def obtainDelegationTokens(owner: String, creds: Credentials): Unit = {
-    client.foreach { client =>
+    clients.foreach { case (uris, client) =>
       info(s"Getting Hive delegation token for $owner against $principal")
       val tokenStr = client.getDelegationToken(owner, principal)
       val hive2Token = new Token[DelegationTokenIdentifier]()
       hive2Token.decodeFromUrlString(tokenStr)
       debug(s"Get Token from hive metastore: ${hive2Token.toString}")
-      creds.addToken(tokenAlias, hive2Token)
+      creds.addToken(uris, hive2Token)
     }
   }
 
-  override def close(): Unit = client.foreach(_.close())
-
-  private def tokenAlias: Text = new Text("hive.server2.delegation.token")
+  override def close(): Unit = clients.values.foreach(_.close())
 }
