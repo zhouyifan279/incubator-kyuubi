@@ -289,6 +289,65 @@
                 <directory>${project.basedir}/src/test/resources</directory>
             </testResource>
         </testResources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <configuration>
+                    <finalName>kyuubi-spark-authz_2.12-${project.version}-${shaded.jar.suffix}
+                    </finalName>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>kyuubi-spark-authz-shade</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>spark-3.2-ranger-2.2</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <spark.version>3.2.1</spark.version>
+                <ranger.version>2.2.0</ranger.version>
+                <shaded.jar.suffix>with-ranger-2.2</shaded.jar.suffix>
+            </properties>
+        </profile>
+        <profile>
+            <id>spark-3.1-ranger-2.1</id>
+            <properties>
+                <spark.version>3.1.2</spark.version>
+                <ranger.version>2.1.0</ranger.version>
+                <shaded.jar.suffix>with-ranger-2.1</shaded.jar.suffix>
+            </properties>
+        </profile>
+        <profile>
+            <id>spark-3.1-easy-ranger-2.1</id>
+            <properties>
+                <spark.version>3.1.2</spark.version>
+                <ranger.version>2.1.0-SNAPSHOT</ranger.version>
+                <shaded.jar.suffix>with-easy-ranger-2.1</shaded.jar.suffix>
+            </properties>
+            <repositories>
+                <repository>
+                    <id>ne-snapshots</id>
+                    <url>https://mvn.hz.netease.com/artifactory/libs-snapshots</url>
+                </repository>
+                <repository>
+                    <id>ne-releases</id>
+                    <url>https://mvn.hz.netease.com/artifactory/libs-releases</url>
+                </repository>
+            </repositories>
+        </profile>
+    </profiles>
 </project>
