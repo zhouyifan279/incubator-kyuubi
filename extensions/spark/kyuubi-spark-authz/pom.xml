@@ -337,6 +337,59 @@
             </properties>
         </profile>
         <profile>
+            <id>spark-3.1-ranger-3.0</id>
+            <properties>
+                <spark.version>3.1.2</spark.version>
+                <ranger.version>3.0.0-SNAPSHOT</ranger.version>
+                <shaded.jar.suffix>with-ranger-3.0</shaded.jar.suffix>
+                <elasticsearch.rest.client.version>7.15.2</elasticsearch.rest.client.version>
+                <log4j2.version>2.17.2</log4j2.version>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>org.elasticsearch.client</groupId>
+                    <artifactId>elasticsearch-rest-high-level-client</artifactId>
+                    <version>${elasticsearch.rest.client.version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>joda-time</groupId>
+                            <artifactId>joda-time</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.apache.httpcomponents</groupId>
+                            <artifactId>httpclient</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>org.apache.httpcomponents</groupId>
+                            <artifactId>httpcore</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>commons-codec</groupId>
+                            <artifactId>commons-codec</artifactId>
+                        </exclusion>
+                        <exclusion>
+                            <groupId>commons-logging</groupId>
+                            <artifactId>commons-logging</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-api</artifactId>
+                    <version>${log4j2.version}</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-core</artifactId>
+                    <version>${log4j2.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>spark-3.1-easy-ranger-2.1</id>
             <properties>
                 <spark.version>3.1.2</spark.version>
