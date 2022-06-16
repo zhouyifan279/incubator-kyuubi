@@ -300,6 +300,16 @@
                 <configuration>
                     <finalName>kyuubi-spark-authz_2.12-${project.version}-1-${shaded.jar.suffix}
                     </finalName>
+                    <filters>
+                        <filter>
+                            <artifact>com.sun.jersey:jersey-bundle</artifact>
+                            <excludes>
+                                <exclude>jersey/**</exclude>
+                                <exclude>javax/**</exclude>
+                                <exclude>META-INF/services/javax.ws.rs.ext.RuntimeDelegate</exclude>
+                            </excludes>
+                        </filter>
+                    </filters>
                 </configuration>
                 <executions>
                     <execution>
