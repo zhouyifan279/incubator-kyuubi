@@ -300,7 +300,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <configuration>
-                    <finalName>kyuubi-spark-authz_2.12-${project.version}-1-${shaded.jar.suffix}
+                    <finalName>kyuubi-spark-authz_2.12-${project.version}-2-${shaded.jar.suffix}
                     </finalName>
                     <filters>
                         <filter>
