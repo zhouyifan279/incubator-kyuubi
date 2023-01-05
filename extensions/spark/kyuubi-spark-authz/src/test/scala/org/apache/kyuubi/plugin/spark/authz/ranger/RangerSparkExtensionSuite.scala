@@ -696,7 +696,8 @@ abstract class RangerSparkExtensionSuite extends AnyFunSuite
 
       doAsSessionUser(
         "bob",
-        sql(s"CREATE TABLE default.$table2 USING $format AS SELECT * FROM default.$table1"))
+        sql(s"CREATE TABLE default.$table2 USING $format AS SELECT a.i i, b.i j " +
+          s"FROM default.$table1 a JOIN default.$table1 b ON a.i = b.i"))
       checkTableOwner("default", table2, "bob")
     }
   }

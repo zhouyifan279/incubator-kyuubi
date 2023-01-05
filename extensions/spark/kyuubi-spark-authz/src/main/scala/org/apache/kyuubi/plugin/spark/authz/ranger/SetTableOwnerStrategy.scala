@@ -46,8 +46,11 @@ class SetTableOwnerStrategy(spark: SparkSession) extends Strategy {
     if (tableCmdSpec.isDefined
       && createTableOps.contains(tableCmdSpec.get.opType)
       && !plan.getTagValue(KYUUBI_AUTHZ_OWNER_TAG).contains(true)) {
+      // Let SparkPlanner skip current strategy in `applyInternal`
       plan.setTagValue(KYUUBI_AUTHZ_OWNER_TAG, true)
-      applyInternal(plan, tableCmdSpec.get)
+      val ret = applyInternal(plan, tableCmdSpec.get)
+      plan.unsetTagValue(KYUUBI_AUTHZ_OWNER_TAG)
+      ret
     } else {
       Nil
     }
@@ -65,7 +68,6 @@ class SetTableOwnerStrategy(spark: SparkSession) extends Strategy {
             val table = invokeAs[CatalogTable](plan, desc.fieldName)
             setFieldVal(plan, desc.fieldName, table.copy(owner = authzUser))
             Nil
-
           case desc if desc.extract(plan).exists(_.catalog.isEmpty) =>
             // v1 create table commands without CatalogTable field
             desc.extract(plan, spark).map { table =>
@@ -76,7 +78,6 @@ class SetTableOwnerStrategy(spark: SparkSession) extends Strategy {
                   authzUser,
                   isReplaceTableCommand(plan))).toSeq
             }.getOrElse(Nil)
-
           case _ =>
             Nil
         }

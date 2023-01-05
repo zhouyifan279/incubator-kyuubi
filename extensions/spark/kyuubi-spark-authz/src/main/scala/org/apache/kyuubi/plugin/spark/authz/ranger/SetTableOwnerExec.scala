@@ -21,14 +21,22 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.{InternalRow, TableIdentifier}
 import org.apache.spark.sql.catalyst.expressions.Attribute
-import org.apache.spark.sql.execution.{LeafExecNode, SparkPlan}
+import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
+
+import org.apache.kyuubi.plugin.spark.authz.util.WithInternalExecChild
 
 case class SetTableOwnerExec(
     delegated: SparkPlan,
     tableId: TableIdentifier,
     authzUser: String,
     replace: Boolean)
-  extends LeafExecNode {
+  extends UnaryExecNode with WithInternalExecChild {
+
+  final override def child: SparkPlan = delegated
+
+  final override def withNewChildInternal(newChild: SparkPlan): SparkPlan = {
+    this.copy(delegated = newChild)
+  }
 
   final override def output: Seq[Attribute] = delegated.output
 
@@ -45,6 +53,6 @@ case class SetTableOwnerExec(
         catalog.alterTable(metadata.copy(owner = authzUser))
       }
     }
-    sparkContext.parallelize(ret, 1)
+    SparkSession.active.sparkContext.parallelize(ret, 1)
   }
 }
