@@ -340,7 +340,8 @@ object TableCommands {
       cmd,
       Seq(tableDesc),
       CREATEVIEW,
-      queryDescs = Seq(queryDesc1, queryDesc2))
+      queryDescs = Seq(queryDesc1, queryDesc2),
+      ownerRewriter = Some(classOf[CreateViewCommandTableOwnerRewriter]))
   }
 
   val CreateTempViewUsing = {
@@ -351,7 +352,11 @@ object TableCommands {
   val CreateDataSourceTable = {
     val cmd = "org.apache.spark.sql.execution.command.CreateDataSourceTableCommand"
     val tableDesc = TableDesc("table", classOf[CatalogTableTableExtractor])
-    TableCommandSpec(cmd, Seq(tableDesc), CREATETABLE)
+    TableCommandSpec(
+      cmd,
+      Seq(tableDesc),
+      CREATETABLE,
+      ownerRewriter = Some(classOf[RunnableCommandTableOwnerRewriter]))
   }
 
   val CreateDataSourceTableAsSelect = {
@@ -368,7 +373,12 @@ object TableCommands {
     val tableDesc =
       TableDesc("tableDesc", classOf[CatalogTableTableExtractor], Some(columnDesc))
     val queryDesc = QueryDesc("query")
-    TableCommandSpec(cmd, Seq(tableDesc), "CREATETABLE_AS_SELECT", queryDescs = Seq(queryDesc))
+    TableCommandSpec(
+      cmd,
+      Seq(tableDesc),
+      "CREATETABLE_AS_SELECT",
+      queryDescs = Seq(queryDesc),
+      ownerRewriter = Some("DataWritingCommandTableOwnerRewriter"))
   }
 
   val CreateTableLike = {
@@ -382,7 +392,11 @@ object TableCommands {
       classOf[TableIdentifierTableExtractor],
       isInput = true,
       setCurrentDatabaseIfMissing = true)
-    TableCommandSpec(cmd, Seq(tableDesc1, tableDesc2), CREATETABLE)
+    TableCommandSpec(
+      cmd,
+      Seq(tableDesc1, tableDesc2),
+      CREATETABLE,
+      ownerRewriter = Some(classOf[RunnableCommandTableOwnerRewriter]))
   }
 
   val DescribeColumn = {

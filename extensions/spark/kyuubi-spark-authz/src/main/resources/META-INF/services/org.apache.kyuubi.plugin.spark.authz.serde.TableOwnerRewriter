@@ -1,0 +1,3 @@
+org.apache.kyuubi.plugin.spark.authz.serde.RunnableCommandTableOwnerRewriter
+org.apache.kyuubi.plugin.spark.authz.serde.CreateViewCommandTableOwnerRewriter
+org.apache.kyuubi.plugin.spark.authz.serde.DataWritingCommandTableOwnerRewriter
