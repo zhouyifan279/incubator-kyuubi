@@ -364,7 +364,8 @@ object TableCommands {
     CreateDataSourceTable.copy(
       classname = cmd,
       opType = CREATETABLE_AS_SELECT,
-      queryDescs = Seq(QueryDesc("query")))
+      queryDescs = Seq(QueryDesc("query")),
+      ownerRewriter = Some(classOf[DataWritingCommandTableOwnerRewriter]))
   }
 
   val CreateHiveTableAsSelect = {
@@ -378,7 +379,7 @@ object TableCommands {
       Seq(tableDesc),
       "CREATETABLE_AS_SELECT",
       queryDescs = Seq(queryDesc),
-      ownerRewriter = Some("DataWritingCommandTableOwnerRewriter"))
+      ownerRewriter = Some(classOf[DataWritingCommandTableOwnerRewriter]))
   }
 
   val CreateTableLike = {
